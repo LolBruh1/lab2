@@ -66,6 +66,3 @@ void loop()
 {
 //No loop yet, because this is a test run, so we only need to run it once...for now
 }
-
-
-https://lastminuteengineers.com/arduino-micro-sd-card-module-tutorial/
