@@ -1,0 +1,58 @@
+#include <SPI.h>
+#include <SD.h>
+#include <SoftwareSerial.h>
+#include <TinyGPS++.h>
+
+ const int chipSelect = 10; // setup SD Card Chip Select Pin
+
+// setup gps serial
+int gpsTxPin = A1;
+int gpsRxPin = A0;
+SoftwareSerial gpsSerial(gpsTxPin, gpsRxPin);
+TinyGPSPlus gps;
+
+void setup() {
+  //This is just a setup to initiate serial communication between serial monitor and the GPS module
+  Serial.begin(9600);
+  gpsSerial.begin(9600); //adjust for GPS unit
+  while (!Serial) {
+    ; // This part is for it to wait for serial port to connect to USB port
+  }
+   Serial.print("Initializing SD card...");
+   //This next function will initiate the SC card. If it goes through, then the if statement activates
+ //and the line: "initialization done" will show up on the serial monitor. Else, the error message
+ //will show up and will terminate the program
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed!");
+    // don't do anything more:
+    return;
+  }
+  Serial.println("card initialized.");
+}
+void loop() {
+//Next, the SD.open() function will open the file named “GPSdata.txt”.
+//It will create that file name if one doesn't exist.
+//On the next line, FILE_WRITE is the parameter that opens the file in read-write mode.
+    File dataFile = SD.open("GPSdata.txt", FILE_WRITE);
+//The next 2 lines will display the characters from the GPS module every time a new sentence is encoded
+//Part of the TinyGPS++ library
+      while(gpsSerial.available()>0){
+        gps.encode(gpsSerial.read());
+        
+//This is to display the new latitude and longitude when it updates.
+//To get Latitude: you use gps.location.lat(), and 6 is for decimals
+//To get Longitude: you use gps.location.lng()
+//dataFile.print prints into the .txt file, while Serial.print into Serial Monitor
+        if (gps.location.isUpdated()){
+          dataFile.print("Latitude= ");
+          dataFile.print(gps.location.lat(), 6);
+          dataFile.print(" Longitude= ");
+          dataFile.println(gps.location.lng(), 6);
+           
+          Serial.print("Latitude= ");
+          Serial.print(gps.location.lat(), 6);
+          Serial.print(" Longitude= ");
+          Serial.println(gps.location.lng(), 6);  
+        } // close the file:
+      } dataFile.close();
+}
