@@ -1,0 +1,71 @@
+//Arduino to SD Card
+#include <SPI.h> //This is for SPI library, to communicate with SD cardover SPI interface
+#include <SD.h> //This is for the SD library
+
+File myFile; //This is an object file to store data on the SD card
+
+//We only need to declare the chipSelect (CS) for this simple project, since...
+//the other pins are declared already through the SPI library
+const int chipSelect = 10;
+
+void setup()
+{
+  // The following line is to open the serial communication and then wait for the port to open
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // This part is for it to wait for serial port to connect.
+  }
+  Serial.print("Initializing SD card...");
+
+//This next function will initiate the SC card. If it goes through, then the if statement activates
+//and the line: "initialization done" will show up on the serial monitor. Else, the error message
+//will show up and will terminate the program
+  if (!SD.begin()) {
+    Serial.println("Error: Initialization Failed!");
+    return;
+  }
+  Serial.println("initialization done.");
+
+//Next, the SD.open() function will open the file named “test.txt”.
+//It will create that file name if one doesn't exist.
+//On the next line, FILE_WRITE is the parameter that opens the file in read-write mode.
+  myFile = SD.open("test.txt", FILE_WRITE);
+
+//Once the file is opened, it will print the “Writing to test.txt…” message on the serial monitor
+  if (myFile) {
+    Serial.print("Writing to test.txt...");
+    //The myFile.println() function we will write the text “testing” into the file.
+    myFile.println("testing for class 6/29");
+    //The close() function is to ensure that the data written to the file is saved.
+    myFile.close();
+    Serial.println("done.");
+  } else {
+    //if the file didn't open, it will display the next error message:
+    Serial.println("error opening test.txt");
+  }
+  //SD.open is to check if the operation was successful.
+  myFile = SD.open("test.txt");
+  //This function will only open test.txt
+  if (myFile) {
+    Serial.println("test.txt:");
+
+    //The function myFile.read() will read the file and then display it on serial monitor
+    //read() will only read a character at a time, so that is why there is a need for a while loop
+    while (myFile.available()) {
+      Serial.write(myFile.read());
+    }
+    // close the file:
+    myFile.close();
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening test.txt");
+  }
+}
+
+void loop()
+{
+//No loop yet, because this is a test run, so we only need to run it once...for now
+}
+
+
+https://lastminuteengineers.com/arduino-micro-sd-card-module-tutorial/
