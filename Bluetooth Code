@@ -1,0 +1,53 @@
+//Arduino to Bluetooth Message
+// Library to make a Software UART
+#include <SoftwareSerial.h>
+
+char c = ' '; //Used for a given character
+boolean new_line = true;
+
+// Instantiation of a Software UART
+SoftwareSerial Bluetooth_Serial(3, 2); // (RX, TX)
+
+void setup() {
+
+  //This is just a setup to initiate serial communication between serial monitor and the Bluetooth module
+  Serial.begin(9600);
+  //This begins the communication for the bluetooth serial port
+  BTSerial.begin(9600);
+  //This will be printed on the Serial Monitor on the Arduino IDE Software
+  Serial.println("Enter AT commands:");
+}
+
+void loop() {
+
+  //This 2 lines are part of the library.
+  //The function is to keep reading from HM-18 and send to the Serial Monitor
+  if (Bluetooth_Serial.available())
+    Serial.write(Bluetooth_Serial.read());
+
+  //This function is to keep reading from the Serial Monitor and sends it to the HM-18
+  if (Serial.available()) {
+
+    //This will read the user's input
+    c = Serial.read();
+
+    //10 is the ASCII code for New Line, and 13 is the ASCII code for Carriage Return.
+    //This function says do not send a newline ('\n') or a carriage return ('\r') characters
+    if(c != 10 && c != 13)
+      Bluetooth_Serial.write(c);
+
+    //This function is for if there is a newline.
+    //It will print the newline and the greater than (>) symbol. And then it will toggle it
+    if (new_line) {
+      Serial.print("\r\n>");
+      new_line = false;
+    }
+
+    //This is to write back to the serial monitor from the bluetooth app
+    Serial.write(c);
+
+    // 10 is for a newline, so this function is to know if a newline is read, and then it will toggle it.
+    if (c == 10)
+      new_line = true;
+  }
+}
