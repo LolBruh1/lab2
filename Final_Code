@@ -1,0 +1,159 @@
+#include <SPI.h>
+#include <SD.h>
+#include <SoftwareSerial.h>
+#include <TinyGPS++.h>
+
+#define redLED 4
+#define greenLED 3
+#define buttonPin1 7
+#define buttonPin2 8
+
+boolean buttonState1 = HIGH;
+boolean buttonState2 = HIGH;
+boolean lastButtonState1 = HIGH;
+boolean lastButtonState2 = HIGH;
+unsigned long button1_lastPressed = 0;
+unsigned long button2_lastPressed = 0;
+uint8_t debounceInterval = 50;
+
+boolean pauseDataUpdate = true;
+
+#define chipSelect 10 // setup SD Card Chip Select Pin Same results
+int gpsTxPin = A1;
+int gpsRxPin = A0;
+SoftwareSerial gpsSerial(gpsRxPin, gpsTxPin);
+TinyGPSPlus gps;
+
+void setup() {
+  //Init pins
+  pinMode(buttonPin1, INPUT_PULLUP);
+  pinMode(buttonPin2, INPUT_PULLUP);
+  pinMode(redLED, OUTPUT);
+  pinMode(greenLED,OUTPUT);
+  Serial.begin(9600);
+  //Init other hardwares
+  gpsSerial.begin(9600);
+  while (!Serial) {
+    ;
+  }
+  Serial.print(F("Initializing SD card..."));
+
+  if (!SD.begin(chipSelect)) {
+    Serial.println(F("Card failed!"));
+    digitalWrite(redLED, HIGH);   // turn the LED on (HIGH is the voltage level)
+    delay(1000);               // wait for a second
+    digitalWrite(redLED, LOW);    // turn the LED off by making the voltage LOW
+    delay(1000);               // wait for a second
+    return;
+  }
+  Serial.println(F("card initialized."));
+}
+
+void loop() {
+  _UP_GPSdata();
+  int reading1 = digitalRead(buttonPin1);
+  int reading2 = digitalRead(buttonPin2);
+  if (reading1 != lastButtonState1) {
+    button1_lastPressed = millis();
+  }
+  if (reading2 != lastButtonState2) {
+    button2_lastPressed = millis();
+  }
+  if ((millis() - button1_lastPressed) > debounceInterval) {
+    if (reading1 != buttonState1){
+      button1_lastPressed = millis();
+      long lastBlinkTime = millis();
+      digitalWrite(redLED, LOW);
+      while(digitalRead(buttonPin1)!= buttonState1){
+        if(millis()-lastBlinkTime>=2000){
+          lastBlinkTime = millis();
+          BLINK_LED(redLED);
+        }
+        delay(10);
+      }
+      long BUTTON_PRESSED_FOR = millis()-button1_lastPressed;
+      if(BUTTON_PRESSED_FOR>=2000 && BUTTON_PRESSED_FOR<4000){
+        pauseDataUpdate = false;    //Start
+      }else if(BUTTON_PRESSED_FOR>=4000 && BUTTON_PRESSED_FOR<6000){
+        pauseDataUpdate = true;     //Pause
+      }else if(BUTTON_PRESSED_FOR>=6000){
+        _STOP();
+      }
+    }
+  }
+  if ((millis() - button2_lastPressed) > debounceInterval) {
+    if (reading2 != buttonState2) {
+      buttonState2 = reading2;
+      if (buttonState2 == HIGH) {
+        _BUTTON_2_PRESSED();
+      }
+    }
+  }
+  lastButtonState1 = reading1;
+  lastButtonState2 = reading2;
+  delay(10);
+}
+void _UP_GPSdata(){
+  if(!pauseDataUpdate){
+
+    boolean printData = false;
+    float latitude = 0;
+    float longitude = 0;
+    while(gpsSerial.available()>0){
+      gps.encode(gpsSerial.read());
+      if (gps.location.isUpdated()){
+        latitude = gps.location.lat();
+        longitude = gps.location.lng();
+        printData = true;
+
+        Serial.print("Latitude= ");
+        Serial.print(gps.location.lat(), 4);
+        Serial.print(" Longitude= ");
+       Serial.println(gps.location.lng(), 4);
+      }
+    }
+
+      if(printData){
+        File dataFile = SD.open("GPSdata.txt", FILE_WRITE);
+        Serial.println(F("BEEP"));// NOTE to self: This line gets printed so I know Arudino read this line
+        dataFile.print("Latitude:");
+        dataFile.print(latitude);
+        dataFile.print(" ");
+        dataFile.print("Longitude:");
+        dataFile.println(longitude);//NOTE to self: But never reached this line? How so????
+        dataFile.close();
+      }
+  }
+
+}
+void _STOP(){
+  //ADD STOP CODE HERE
+  //Earlier : 1275 bytes. Now:1179  bytes
+}
+void _BUTTON_2_PRESSED(){
+  //your code here
+  Serial.println(F("BUTTON 2 Pressed"));
+  BLINK_LED(greenLED);
+  
+  boolean dataFetched = false;
+  while(!dataFetched){
+    while(gpsSerial.available()>0){
+      gps.encode(gpsSerial.read());
+      if (gps.location.isUpdated()){
+        dataFetched = true;
+        Serial.print(F("Latitude= "));
+        Serial.print(gps.location.lat(), 6);
+        Serial.print(F(" Longitude= "));
+        Serial.println(gps.location.lng(), 6);
+      }
+    }
+    delay(100);
+  }
+}
+
+void BLINK_LED(int ledPIN){
+  digitalWrite(ledPIN, HIGH);
+  delay(100);
+  digitalWrite(ledPIN, LOW);
+  delay(100);
+}
